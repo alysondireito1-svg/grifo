@@ -1231,10 +1231,10 @@ html, body {
   <div class="intro-flash" id="intro-flash"></div>
 
   <div class="intro-lines" id="intro-lines">
-    <div class="intro-line" id="il1">Dois jogadores.</div>
-    <div class="intro-line" id="il2">Uma rivalidade eterna.</div>
+    <div class="intro-line" id="il1">Não é sobre ser o melhor.</div>
+    <div class="intro-line" id="il2">É sobre provar que o outro é um fracassado.</div>
     <div class="intro-line" id="il3">Movimento por movimento.</div>
-    <div class="intro-tagline" id="il4">Ódio &nbsp;·&nbsp; Estratégia &nbsp;·&nbsp; Persistência</div>
+    <div class="intro-tagline" id="il4">Humilhação &nbsp;·&nbsp; Estratégia &nbsp;·&nbsp; Ódio Eterno</div>
   </div>
 
   <div class="intro-logo-wrap" id="intro-logo">
@@ -1252,7 +1252,7 @@ html, body {
     <div class="intro-subtitle" id="intro-subtitle">Grandes Rivais Imortais Forjados no Ódio</div>
   </div>
 
-  <div class="intro-skip" id="intro-skip" onclick="skipIntro()">SKIP ▶</div>
+  <div class="intro-skip" id="intro-skip">SKIP ▶</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -1921,47 +1921,64 @@ class ChessGame {
 // ── TAUNT MESSAGES ───────────────────────────────────────────
 const TAUNTS = {
   move: [
-    'O conselho decidiu não te conceder o título de mestre.',
-    'Você falhou com a República.',
-    'Winter is coming... para o seu rei.',
-    'A Force não está com você hoje.',
-    'Rip and tear... até o fim.',
-    'A guerra continua. Sua resistência é admirável.',
-    'Darkness is patient. So am I.',
-    'Every move you make seals your fate.',
-    'Even in death, the board remembers.',
+    'O Conselho Jedi decidiu não te conceder o título de Mestre. — Star Wars',
+    'Você falhou com a República. Você falhou com todos nós. — Star Wars',
+    'O inverno está chegando... para o seu rei. — Game of Thrones',
+    'Sou inevitável. — Thanos, Vingadores',
+    'Rasgue e destrua... até o fim. — DOOM',
+    'Poder ilimitado! — Palpatine, Star Wars',
+    'Você não passou! — Gandalf, O Senhor dos Anéis',
+    'Pela honra de Gondor, você falhou. — O Senhor dos Anéis',
+    'Bem-vindo ao tabuleiro real, criança. — Game of Thrones',
+    'Um Lannister sempre paga suas dívidas. Você não é um Lannister. — GOT',
+    'Isso é o que os heróis fazem. Aparentemente você não é um. — Marvel',
+    'Com grande poder vem grande responsabilidade. Você não tem nenhum dos dois. — Homem-Aranha',
+    'Eu sou Batman. Você claramente não é. — Batman',
+    'Caos não é um abismo. Caos é uma escada. Você caiu. — Game of Thrones',
+    'Até a morte, o tabuleiro lembra. — Dark Souls',
   ],
   check: [
-    '⚠️ Xeque. Seu rei treme.',
-    '⚠️ O trono vacila. Defenda-se.',
-    '⚠️ Você abriu mão da própria dignidade estratégica.',
-    '⚠️ Finish him. (ainda não)',
-    '⚠️ The night is dark and full of blunders.',
+    '⚠️ Xeque! Seu rei treme como Luke diante de Vader. — Star Wars',
+    '⚠️ O trono vacila. A noite é escura e cheia de blunders. — GOT',
+    '⚠️ Você abriu mão da própria dignidade estratégica. — O Tabuleiro',
+    '⚠️ Acabe com ele! (ainda não, mas já tá perto) — Mortal Kombat',
+    '⚠️ Sinto um grande erro da sua parte. — Yoda, Star Wars',
+    '⚠️ Você deveria ter mirado na cabeça. — Thanos, Vingadores',
+    '⚠️ Isso vai doer. — Todo mundo que já jogou xadrez',
   ],
   capture: [
-    'Uma peça caiu. A guerra tem seu preço.',
-    'Fatality parcial.',
-    'O sacrifício foi inevitável.',
-    'Sangue no tabuleiro.',
-    'Pela honra de Gondor... você pagou.',
+    'Fatalidade parcial. — Mortal Kombat',
+    'Uma peça a menos. Assim como sua dignidade. — O Tabuleiro',
+    'O sacrifício era inevitável. Como sua derrota. — Thanos',
+    'Sangue no tabuleiro. A guerra tem seu preço. — Berserk',
+    'Pela honra de Gondor... você pagou com uma peça. — LOTR',
+    'Peça capturada. Assim morre a esperança. — Dark Souls',
+    'Mais um troféu para a coleção. — Batman',
+    'O preço do fracasso é sempre alto. — Darth Vader',
   ],
   checkmate: [
-    '💀 Fatality.',
-    '💀 Finish him. — ✓',
-    '💀 Você falhou com a República.',
-    '💀 O conselho confirmou sua derrota.',
-    '💀 A esperança morreu junto com o seu rei.',
-    '💀 Do or do not. You did not.',
-    '💀 "Parabéns pelo colapso estratégico." — O Tabuleiro',
-    '💀 The night is dark and full of blunders. Todos seus.',
-    '💀 I am inevitable.',
-    '💀 Por honra de Gondor... você falhou feio.',
+    '💀 Fatalidade. — Mortal Kombat',
+    '💀 Acabe com ele. ✓ — Mortal Kombat',
+    '💀 Você falhou com a República. Com todos nós. — Star Wars',
+    '💀 O Conselho confirmou sua derrota estratégica. — Star Wars',
+    '💀 A esperança morreu junto com o seu rei. — O Tabuleiro',
+    '💀 Faça ou não faça. Você não fez. — Yoda, Star Wars',
+    '💀 Parabéns pelo colapso estratégico épico. — O Tabuleiro',
+    '💀 A noite foi escura e cheia de blunders. Todos seus. — GOT',
+    '💀 Sou inevitável. E você, definitivamente, não é. — Thanos',
+    '💀 Por honra de Gondor... você falhou feio demais. — LOTR',
+    '💀 Até nas trevas, um raio de luz brilha. O seu apagou. — LOTR',
+    '💀 Isso é o que acontece quando você subestima o lado sombrio. — Vader',
+    '💀 Não foi pessoal. Foi apenas xadrez. — O Padrinho (quase)',
+    '💀 Você deveria ter ficado em Mordor. — LOTR',
+    '💀 A Matrix te escolheu. Para perder. — Matrix',
   ],
   newgame: [
-    'A guerra recomeça. Que o mais brilhante vença.',
-    'Nova batalha. Mesma rivalidade eterna.',
-    'O tabuleiro não esquece. Mas te dá outra chance.',
-    'Grandes Rivais. Nova rodada. Mesmo ódio.',
+    'A guerra recomeça. Que a Força esteja com o mais brilhante. — Star Wars',
+    'Nova batalha. Mesma rivalidade eterna. O tabuleiro não esquece.',
+    'Um novo ciclo começa. Como diz Thanos: inevitável.',
+    'Grandes Rivais Imortais. Nova rodada. Mesmo ódio ancestral.',
+    'O inverno acabou. Uma nova guerra começa. — GOT',
   ]
 };
 
@@ -2018,14 +2035,29 @@ function runIntro() {
   }, 800 + lines.length * 900 + 2200);
 
   // Phase 4: Transition to menu
-  tl(() => {
-    document.getElementById('screen-intro').style.opacity = '0';
-    document.getElementById('screen-intro').style.transition = 'opacity 1s ease';
-    setTimeout(() => {
+  tl(function() {
+    var introEl = document.getElementById('screen-intro');
+    if (introEl) {
+      introEl.style.transition = 'opacity 0.8s ease';
+      introEl.style.opacity = '0';
+    }
+    setTimeout(function() {
       showScreen('screen-menu');
       loadInitialState();
-    }, 1000);
+    }, 800);
   }, 800 + lines.length * 900 + 3200);
+}
+
+function transitionToMenu() {
+  const introEl = document.getElementById('screen-intro');
+  if (introEl) {
+    introEl.style.transition = 'opacity 0.8s ease';
+    introEl.style.opacity = '0';
+  }
+  setTimeout(() => {
+    showScreen('screen-menu');
+    loadInitialState();
+  }, 800);
 }
 
 function animIn(id) {
@@ -2082,8 +2114,9 @@ function flashScreen() {
 }
 
 function skipIntro() {
-  document.getElementById('screen-intro').style.opacity = '0';
-  document.getElementById('screen-intro').style.transition = 'opacity 0.5s ease';
+  const introEl = document.getElementById('screen-intro');
+  introEl.style.transition = 'opacity 0.5s ease';
+  introEl.style.opacity = '0';
   setTimeout(() => {
     showScreen('screen-menu');
     loadInitialState();
@@ -2106,16 +2139,27 @@ async function apiCall(params) {
 
 async function loadInitialState() {
   setSyncState('syncing');
-  const data = await apiCall({ action: 'getState' });
-  if (data.error) { setSyncState('error'); return; }
-  gameState = data;
-  updateMenuUI();
-  setSyncState('ok');
+  try {
+    const data = await apiCall({ action: 'getState' });
+    if (data && !data.error) {
+      gameState = data;
+      updateMenuUI();
+      setSyncState('ok');
+    } else {
+      setSyncState('error');
+      showToast('Conectando ao servidor...', false);
+      // Retry after 3s
+      setTimeout(loadInitialState, 3000);
+    }
+  } catch(e) {
+    setSyncState('error');
+    setTimeout(loadInitialState, 3000);
+  }
 }
 
 // ── MENU UI ───────────────────────────────────────────────────
 function updateMenuUI() {
-  if (!gameState) return;
+  if (!gameState || typeof gameState !== 'object') return;
   document.getElementById('menu-p1name').textContent = gameState.p1name;
   document.getElementById('menu-p2name').textContent = gameState.p2name;
   document.getElementById('menu-p1wins').textContent = gameState.p1wins;
@@ -2150,8 +2194,8 @@ function updateMenuUI() {
 function openPlayerSelect(action) {
   pendingAction = action;
   const modal = document.getElementById('player-select-modal');
-  const p1name = gameState?.p1name || 'Jogador 1';
-  const p2name = gameState?.p2name || 'Jogador 2';
+  const p1name = gameState && gameState.p1name || 'Jogador 1';
+  const p2name = gameState && gameState.p2name || 'Jogador 2';
 
   document.getElementById('ps-btn1').textContent = `⬜ ${p1name} — Brancas`;
   document.getElementById('ps-btn2').textContent = `⬛ ${p2name} — Pretas`;
@@ -2172,15 +2216,16 @@ function closePlayerSelect() {
   pendingAction = null;
 }
 
-async async function selectPlayer(player) {
+async function selectPlayer(player) {
   currentPlayer = player;
   closePlayerSelect();
   loadSetupFromStorage();
 
   // Password check
-  const savedPass = localStorage.getItem('grifo_pass_p' + player);
+  const savedPass = localStorage.getItem('grifo_pass_p' + String(player));
   if (savedPass) {
-    const input = prompt('🔐 Senha do ' + (player === 1 ? (gameState?.p1name || 'Jogador 1') : (gameState?.p2name || 'Jogador 2')) + ':');
+    const pname = player === 1 ? (gameState && gameState.p1name ? gameState.p1name : 'Jogador 1') : (gameState && gameState.p2name ? gameState.p2name : 'Jogador 2');
+    const input = prompt('Senha de ' + pname + ':');
     if (input !== savedPass) {
       showToast('Senha incorreta. Acesso negado.', true);
       return;
@@ -2226,8 +2271,8 @@ async function pollGameState() {
   const data = await apiCall({ action: 'getState' });
   if (data.error) { setSyncState('error'); return; }
 
-  const prevTurn = gameState?.turn;
-  const prevLastMove = gameState?.lastMove;
+  const prevTurn = gameState && gameState.turn;
+  const prevLastMove = gameState && gameState.lastMove;
   gameState = data;
 
   // If opponent moved
@@ -2266,7 +2311,7 @@ function renderBoard() {
       cell.onclick = () => handleCellClick(square);
 
       // Highlights
-      if (gameState?.lastMove) {
+      if (gameState && gameState.lastMove) {
         const lm = gameState.lastMove;
         if (lm.substring(0, 2) === square) cell.classList.add('last-from');
         if (lm.substring(2, 4) === square) cell.classList.add('last-to');
@@ -2280,7 +2325,7 @@ function renderBoard() {
         cell.appendChild(span);
 
         // King in check
-        if (piece.toLowerCase() === 'k' && gameState?.check) {
+        if (piece.toLowerCase() === 'k' && gameState && gameState.check) {
           const kingColor = piece === 'K' ? 'w' : 'b';
           if (kingColor === chess.turn) cell.classList.add('in-check');
         }
@@ -2680,12 +2725,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (p1ntfy) document.getElementById('cfg-p1ntfy').value = p1ntfy;
   if (p2ntfy) document.getElementById('cfg-p2ntfy').value = p2ntfy;
 
-  // Set Alyson's default password if not set yet
   if (!localStorage.getItem('grifo_pass_p1')) {
     localStorage.setItem('grifo_pass_p1', 'vencedor');
   }
 
-  setTimeout(() => runIntro(), 300);
+  // Bind skip button here so function is guaranteed to exist
+  const skipBtn = document.getElementById('intro-skip');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', function() {
+      var introEl = document.getElementById('screen-intro');
+      if (introEl) {
+        introEl.style.transition = 'opacity 0.5s ease';
+        introEl.style.opacity = '0';
+      }
+      setTimeout(function() {
+        showScreen('screen-menu');
+        loadInitialState();
+      }, 500);
+    });
+  }
+
+  setTimeout(function() { runIntro(); }, 300);
 });
 
 // Prevent context menu on long press
