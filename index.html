@@ -41,7 +41,7 @@
   --mono:     'Share Tech Mono', monospace;
   --serif:    'Cinzel', serif;
   --sans:     'Rajdhani', sans-serif;
-  --board-size: min(94vw, 480px);
+  --board-size: min(98vw, 460px);
   --cell-size: calc(var(--board-size) / 8);
 }
 
@@ -592,7 +592,9 @@ html, body {
   padding: 0;
   justify-content: flex-start;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-top: max(env(safe-area-inset-top), 0px);
+  align-items: center;
 }
 
 .game-header {
@@ -601,7 +603,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
@@ -670,8 +672,8 @@ html, body {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 10px 16px;
-  gap: 8px;
+  padding: 6px 12px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -776,7 +778,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--cell-size) * 0.68);
+  font-size: calc(var(--cell-size) * 0.72);
   cursor: pointer;
   position: relative;
   transition: background-color 0.1s;
@@ -841,14 +843,47 @@ html, body {
   transition: opacity 0.1s;
 }
 
+.timer-bar-wrap {
+  width: var(--board-size);
+  margin: 4px auto 0;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold3), var(--gold));
+  border-radius: 2px;
+  transition: width 1s linear, background 0.5s;
+  width: 100%;
+}
+
+.timer-bar-fill.warning {
+  background: linear-gradient(90deg, #8b1a1a, var(--red3));
+}
+
+.timer-text {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 0.2em;
+  margin: 2px 0 4px;
+}
+
+.timer-text.warning { color: var(--red3); }
+.timer-text.urgent { color: var(--red3); animation: pulse 1s infinite; }
+
 /* Game footer */
 .game-footer {
   width: 100%;
   max-width: 520px;
-  padding: 12px 16px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .event-bar {
@@ -889,7 +924,7 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  max-height: 60px;
+  max-height: 44px;
   overflow-y: auto;
 }
 
@@ -1319,7 +1354,10 @@ html, body {
 <div class="screen" id="screen-game">
 
   <div class="game-header">
+    <div>
     <div class="game-header-logo">G<span>.</span>R<span>.</span>I<span>.</span>F<span>.</span>O</div>
+    <div id="game-mode-label" style="font-family:var(--mono);font-size:8px;color:var(--gray);letter-spacing:0.2em;"></div>
+  </div>
     <div class="game-header-right">
       <div class="sync-indicator">
         <div class="sync-dot" id="sync-dot"></div>
@@ -1335,7 +1373,10 @@ html, body {
       <div class="player-color-tag" id="p-top-color">PRETAS</div>
       <div class="player-captured" id="p-top-captured"></div>
     </div>
-    <div class="turn-display" id="turn-label">—</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+  <div class="turn-display" id="turn-label">—</div>
+  <div id="time-left" style="font-family:var(--mono);font-size:9px;color:var(--gray);letter-spacing:0.15em;text-align:center;"></div>
+</div>
     <div class="player-info right" id="p-info-bot">
       <div class="player-name" id="p-bot-name">—</div>
       <div class="player-color-tag" id="p-bot-color">BRANCAS</div>
@@ -1343,12 +1384,16 @@ html, body {
     </div>
   </div>
 
-  <div style="position:relative; margin: 0 auto; padding: 0 20px;">
+  <div style="position:relative; margin: 0 auto; padding: 0 4px;">
     <div class="board-container" id="board-container">
       <div id="chess-board"></div>
       <div class="board-flash" id="board-flash"></div>
     </div>
   </div>
+  <div class="timer-bar-wrap" id="timer-bar-wrap" style="display:none;">
+    <div class="timer-bar-fill" id="timer-bar-fill"></div>
+  </div>
+  <div class="timer-text" id="timer-text"></div>
 
   <div class="game-footer">
     <div class="event-bar" id="event-bar">Aguardando jogada...</div>
@@ -1424,6 +1469,26 @@ html, body {
       <button class="btn btn-primary" style="flex:1" onclick="saveSetup()">💾 SALVAR</button>
       <button class="btn btn-ghost" style="flex:1" onclick="showScreen('screen-menu')">← VOLTAR</button>
     </div>
+
+    <div class="divider" style="max-width:100%;"></div>
+
+    <div class="setup-ntfy-info" style="border-color:var(--red);background:rgba(139,26,26,0.05);">
+      <strong style="color:var(--red3);">☠️ Zona de Perigo</strong>
+      Zerar o histórico apaga todas as vitórias, derrotas e estatísticas permanentemente.<br>
+      Requer a senha dos <strong>dois jogadores</strong>.
+    </div>
+
+    <div class="field-group">
+      <div class="field-label" style="color:var(--red3);">Senha do Jogador 1 — Para confirmar reset</div>
+      <input class="field-input" id="reset-p1pass" type="password" placeholder="Senha do Jogador 1" maxlength="30" style="border-color:var(--red);">
+    </div>
+
+    <div class="field-group">
+      <div class="field-label" style="color:var(--red3);">Senha do Jogador 2 — Para confirmar reset</div>
+      <input class="field-input" id="reset-p2pass" type="password" placeholder="Senha do Jogador 2" maxlength="30" style="border-color:var(--red);">
+    </div>
+
+    <button class="btn btn-danger" onclick="resetHistory()">☠️ ZERAR HISTÓRICO PERMANENTEMENTE</button>
   </div>
 </div>
 
@@ -1478,8 +1543,20 @@ html, body {
   <div class="player-select-sheet">
     <div class="player-select-title" id="ps-title">Quem é você?</div>
     <div class="player-select-desc" id="ps-desc">Escolha seu lado na guerra</div>
-    <button class="btn btn-secondary" id="ps-btn1" onclick="selectPlayer(1)">⬜ Jogador 1 — Brancas</button>
-    <button class="btn btn-secondary" id="ps-btn2" onclick="selectPlayer(2)">⬛ Jogador 2 — Pretas</button>
+
+    <div id="ps-player-btns">
+      <button class="btn btn-secondary" id="ps-btn1" onclick="selectPlayer(1)" style="margin-bottom:8px;">⬜ Jogador 1 — Brancas</button>
+      <button class="btn btn-secondary" id="ps-btn2" onclick="selectPlayer(2)">⬛ Jogador 2 — Pretas</button>
+    </div>
+
+    <div id="ps-mode-btns" style="display:none; flex-direction:column; gap:8px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:0.3em;text-align:center;margin-bottom:4px;">MODO DE JOGO</div>
+      <button class="btn btn-secondary" onclick="confirmNewGame('blitz')">⚡ BLITZ — 5 min + 2s/mov</button>
+      <button class="btn btn-secondary" onclick="confirmNewGame('classical')">♟️ CLÁSSICO — 30 minutos</button>
+      <button class="btn btn-secondary" onclick="confirmNewGame('7days')">📅 CORRESPONDÊNCIA — 7 dias/mov</button>
+      <button class="btn btn-secondary" onclick="confirmNewGame('unlimited')">∞ SEM LIMITE — Sem tempo</button>
+    </div>
+
     <button class="btn btn-ghost" onclick="closePlayerSelect()">← Cancelar</button>
   </div>
 </div>
@@ -1921,64 +1998,64 @@ class ChessGame {
 // ── TAUNT MESSAGES ───────────────────────────────────────────
 const TAUNTS = {
   move: [
-    'O Conselho Jedi decidiu não te conceder o título de Mestre. — Star Wars',
-    'Você falhou com a República. Você falhou com todos nós. — Star Wars',
-    'O inverno está chegando... para o seu rei. — Game of Thrones',
+    'O Conselho Jedi decidiu não te conceder o título de Mestre.',
+    'Você falhou com a República. Você falhou com todos nós.',
+    'O inverno está chegando... para o seu rei.',
     'Sou inevitável. — Thanos, Vingadores',
-    'Rasgue e destrua... até o fim. — DOOM',
+    'Rasgue e destrua... até o fim.',
     'Poder ilimitado! — Palpatine, Star Wars',
     'Você não passou! — Gandalf, O Senhor dos Anéis',
-    'Pela honra de Gondor, você falhou. — O Senhor dos Anéis',
-    'Bem-vindo ao tabuleiro real, criança. — Game of Thrones',
-    'Um Lannister sempre paga suas dívidas. Você não é um Lannister. — GOT',
-    'Isso é o que os heróis fazem. Aparentemente você não é um. — Marvel',
-    'Com grande poder vem grande responsabilidade. Você não tem nenhum dos dois. — Homem-Aranha',
-    'Eu sou Batman. Você claramente não é. — Batman',
-    'Caos não é um abismo. Caos é uma escada. Você caiu. — Game of Thrones',
-    'Até a morte, o tabuleiro lembra. — Dark Souls',
+    'Pela honra de Gondor, você falhou.',
+    'Bem-vindo ao tabuleiro real, criança.',
+    'Um Lannister sempre paga suas dívidas. Você não é um Lannister.',
+    'Isso é o que os heróis fazem. Aparentemente você não é um.',
+    'Com grande poder vem grande responsabilidade. Você não tem nenhum dos dois.',
+    'Eu sou Batman. Você claramente não é.',
+    'Caos não é um abismo. Caos é uma escada. Você caiu.',
+    'Até a morte, o tabuleiro lembra.',
   ],
   check: [
-    '⚠️ Xeque! Seu rei treme como Luke diante de Vader. — Star Wars',
-    '⚠️ O trono vacila. A noite é escura e cheia de blunders. — GOT',
-    '⚠️ Você abriu mão da própria dignidade estratégica. — O Tabuleiro',
-    '⚠️ Acabe com ele! (ainda não, mas já tá perto) — Mortal Kombat',
+    '⚠️ Xeque! Seu rei treme como Luke diante de Vader.',
+    '⚠️ O trono vacila. A noite é escura e cheia de blunders.',
+    '⚠️ Você abriu mão da própria dignidade estratégica.',
+    '⚠️ Acabe com ele! (ainda não, mas já tá perto)',
     '⚠️ Sinto um grande erro da sua parte. — Yoda, Star Wars',
     '⚠️ Você deveria ter mirado na cabeça. — Thanos, Vingadores',
-    '⚠️ Isso vai doer. — Todo mundo que já jogou xadrez',
+    '⚠️ Isso vai doer.',
   ],
   capture: [
-    'Fatalidade parcial. — Mortal Kombat',
-    'Uma peça a menos. Assim como sua dignidade. — O Tabuleiro',
-    'O sacrifício era inevitável. Como sua derrota. — Thanos',
-    'Sangue no tabuleiro. A guerra tem seu preço. — Berserk',
-    'Pela honra de Gondor... você pagou com uma peça. — LOTR',
-    'Peça capturada. Assim morre a esperança. — Dark Souls',
-    'Mais um troféu para a coleção. — Batman',
-    'O preço do fracasso é sempre alto. — Darth Vader',
+    'Fatalidade parcial.',
+    'Uma peça a menos. Assim como sua dignidade.',
+    'O sacrifício era inevitável. Como sua derrota.',
+    'Sangue no tabuleiro. A guerra tem seu preço.',
+    'Pela honra de Gondor... você pagou com uma peça.',
+    'Peça capturada. Assim morre a esperança.',
+    'Mais um troféu para a coleção.',
+    'O preço do fracasso é sempre alto.',
   ],
   checkmate: [
-    '💀 Fatalidade. — Mortal Kombat',
-    '💀 Acabe com ele. ✓ — Mortal Kombat',
-    '💀 Você falhou com a República. Com todos nós. — Star Wars',
-    '💀 O Conselho confirmou sua derrota estratégica. — Star Wars',
-    '💀 A esperança morreu junto com o seu rei. — O Tabuleiro',
+    '💀 Fatalidade.',
+    '💀 Acabe com ele. ✓',
+    '💀 Você falhou com a República. Com todos nós.',
+    '💀 O Conselho confirmou sua derrota estratégica.',
+    '💀 A esperança morreu junto com o seu rei.',
     '💀 Faça ou não faça. Você não fez. — Yoda, Star Wars',
-    '💀 Parabéns pelo colapso estratégico épico. — O Tabuleiro',
-    '💀 A noite foi escura e cheia de blunders. Todos seus. — GOT',
-    '💀 Sou inevitável. E você, definitivamente, não é. — Thanos',
-    '💀 Por honra de Gondor... você falhou feio demais. — LOTR',
-    '💀 Até nas trevas, um raio de luz brilha. O seu apagou. — LOTR',
-    '💀 Isso é o que acontece quando você subestima o lado sombrio. — Vader',
-    '💀 Não foi pessoal. Foi apenas xadrez. — O Padrinho (quase)',
-    '💀 Você deveria ter ficado em Mordor. — LOTR',
-    '💀 A Matrix te escolheu. Para perder. — Matrix',
+    '💀 Parabéns pelo colapso estratégico épico.',
+    '💀 A noite foi escura e cheia de blunders. Todos seus.',
+    '💀 Sou inevitável. E você, definitivamente, não é.',
+    '💀 Por honra de Gondor... você falhou feio demais.',
+    '💀 Até nas trevas, um raio de luz brilha. O seu apagou.',
+    '💀 Isso é o que acontece quando você subestima o lado sombrio.',
+    '💀 Não foi pessoal. Foi apenas xadrez.',
+    '💀 Você deveria ter ficado em Mordor.',
+    '💀 A Matrix te escolheu. Para perder.',
   ],
   newgame: [
-    'A guerra recomeça. Que a Força esteja com o mais brilhante. — Star Wars',
+    'A guerra recomeça. Que a Força esteja com o mais brilhante.',
     'Nova batalha. Mesma rivalidade eterna. O tabuleiro não esquece.',
     'Um novo ciclo começa. Como diz Thanos: inevitável.',
     'Grandes Rivais Imortais. Nova rodada. Mesmo ódio ancestral.',
-    'O inverno acabou. Uma nova guerra começa. — GOT',
+    'O inverno acabou. Uma nova guerra começa.',
   ]
 };
 
@@ -1996,46 +2073,67 @@ function showScreen(id) {
 
 // ── INTRO ────────────────────────────────────────────────────
 function runIntro() {
-  const tl = (fn, delay) => setTimeout(fn, delay);
+  var step = 0;
+  var lines = ['il1','il2','il3','il4'];
 
-  // Phase 1: Lines appear
-  const lines = ['il1', 'il2', 'il3', 'il4'];
-  lines.forEach((id, i) => {
-    tl(() => animIn(id), 800 + i * 900);
+  function animInEl(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }
+  function animOutEl(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-15px)';
+  }
+
+  // Phase 1: show lines one by one
+  lines.forEach(function(id, i) {
+    setTimeout(function() { animInEl(id); }, 600 + i * 800);
   });
 
-  // Phase 2: Lines fade, logo appears
-  tl(() => {
-    lines.forEach(id => animOut(id));
-  }, 800 + lines.length * 900 + 400);
+  // Phase 2: fade lines, show logo
+  setTimeout(function() {
+    lines.forEach(function(id) { animOutEl(id); });
+  }, 600 + lines.length * 800 + 200);
 
-  tl(() => {
-    document.getElementById('intro-logo').style.opacity = '1';
-    const letters = ['iL-G','iD1','iL-R','iD2','iL-I','iD3','iL-F','iD4','iL-O'];
-    letters.forEach((id, i) => {
-      setTimeout(() => {
-        const el = document.getElementById(id);
+  setTimeout(function() {
+    var logoWrap = document.getElementById('intro-logo');
+    if (logoWrap) logoWrap.style.opacity = '1';
+    var letters = ['iL-G','iD1','iL-R','iD2','iL-I','iD3','iL-F','iD4','iL-O'];
+    letters.forEach(function(id, i) {
+      setTimeout(function() {
+        var el = document.getElementById(id);
         if (!el) return;
-        el.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        el.style.transition = 'all 0.5s cubic-bezier(0.175,0.885,0.32,1.275)';
         el.style.opacity = '1';
         el.style.transform = 'translateY(0) rotateX(0)';
-      }, i * 100);
+      }, i * 80);
     });
-  }, 800 + lines.length * 900 + 900);
+  }, 600 + lines.length * 800 + 700);
 
-  tl(() => {
-    animIn('intro-subtitle');
-  }, 800 + lines.length * 900 + 1800);
+  setTimeout(function() {
+    var sub = document.getElementById('intro-subtitle');
+    if (sub) {
+      sub.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+      sub.style.opacity = '1';
+      sub.style.transform = 'translateY(0)';
+    }
+  }, 600 + lines.length * 800 + 1500);
 
-  // Phase 3: Impact
-  tl(() => {
+  // Phase 3: particles + flash
+  setTimeout(function() {
     spawnParticles();
     flashScreen();
-    vibrate([50, 30, 80]);
-  }, 800 + lines.length * 900 + 2200);
+    if (navigator.vibrate) navigator.vibrate([50,30,80]);
+  }, 600 + lines.length * 800 + 1900);
 
-  // Phase 4: Transition to menu
-  tl(function() {
+  // Phase 4: transition to menu
+  setTimeout(function() {
     var introEl = document.getElementById('screen-intro');
     if (introEl) {
       introEl.style.transition = 'opacity 0.8s ease';
@@ -2045,7 +2143,7 @@ function runIntro() {
       showScreen('screen-menu');
       loadInitialState();
     }, 800);
-  }, 800 + lines.length * 900 + 3200);
+  }, 600 + lines.length * 800 + 3000);
 }
 
 function transitionToMenu() {
@@ -2194,11 +2292,17 @@ function updateMenuUI() {
 function openPlayerSelect(action) {
   pendingAction = action;
   const modal = document.getElementById('player-select-modal');
-  const p1name = gameState && gameState.p1name || 'Jogador 1';
-  const p2name = gameState && gameState.p2name || 'Jogador 2';
+  const p1name = (gameState && gameState.p1name) || 'Jogador 1';
+  const p2name = (gameState && gameState.p2name) || 'Jogador 2';
 
-  document.getElementById('ps-btn1').textContent = `⬜ ${p1name} — Brancas`;
-  document.getElementById('ps-btn2').textContent = `⬛ ${p2name} — Pretas`;
+  document.getElementById('ps-btn1').textContent = '⬜ ' + p1name + ' — Brancas';
+  document.getElementById('ps-btn2').textContent = '⬛ ' + p2name + ' — Pretas';
+
+  // Always show player buttons first, hide mode buttons
+  var playerBtns = document.getElementById('ps-player-btns');
+  var modeBtns = document.getElementById('ps-mode-btns');
+  if (playerBtns) { playerBtns.style.display = 'flex'; playerBtns.style.flexDirection = 'column'; playerBtns.style.gap = '8px'; }
+  if (modeBtns) modeBtns.style.display = 'none';
 
   if (action === 'newgame') {
     document.getElementById('ps-title').textContent = 'Nova Partida';
@@ -2218,14 +2322,16 @@ function closePlayerSelect() {
 
 async function selectPlayer(player) {
   currentPlayer = player;
-  closePlayerSelect();
   loadSetupFromStorage();
 
   // Password check
-  const savedPass = localStorage.getItem('grifo_pass_p' + String(player));
-  if (savedPass) {
-    const pname = player === 1 ? (gameState && gameState.p1name ? gameState.p1name : 'Jogador 1') : (gameState && gameState.p2name ? gameState.p2name : 'Jogador 2');
-    const input = prompt('Senha de ' + pname + ':');
+  var savedPass = localStorage.getItem('grifo_pass_p' + String(player));
+  if (savedPass && savedPass.length > 0) {
+    var pname = player === 1
+      ? ((gameState && gameState.p1name) || 'Jogador 1')
+      : ((gameState && gameState.p2name) || 'Jogador 2');
+    var input = prompt('🔐 Senha de ' + pname + ':');
+    if (input === null) return; // cancelled
     if (input !== savedPass) {
       showToast('Senha incorreta. Acesso negado.', true);
       return;
@@ -2233,16 +2339,42 @@ async function selectPlayer(player) {
   }
 
   if (pendingAction === 'newgame') {
-    await handleNewGame();
+    // Show mode selection instead of closing
+    document.getElementById('ps-player-btns').style.display = 'none';
+    document.getElementById('ps-mode-btns').style.display = 'flex';
+    document.getElementById('ps-title').textContent = 'Modo de Jogo';
+    document.getElementById('ps-desc').textContent = 'Escolha as regras desta guerra';
   } else {
+    closePlayerSelect();
     enterGame();
   }
 }
 
-async function handleNewGame() {
-  if (!confirm('Iniciar nova partida? O histórico atual será mantido nas estatísticas.')) return;
+async function confirmNewGame(mode) {
+  closePlayerSelect();
+  window.selectedGameMode = mode;
+
+  // Winner of last game gets white (starts first)
+  var starterPlayer = '1'; // default
+  if (gameState && gameState.winner) {
+    starterPlayer = gameState.winner; // winner gets white next game
+  }
+
   showLoading(true);
-  const data = await apiCall({ action: 'newGame', player: currentPlayer });
+  const data = await apiCall({ action: 'newGame', player: String(currentPlayer), mode: mode, starter: starterPlayer });
+  showLoading(false);
+  if (data.error) { showToast('Erro ao criar partida', true); return; }
+  gameState = data.state;
+
+  // Notify player which color they got
+  var myColor = (starterPlayer === String(currentPlayer)) ? 'Brancas (joga primeiro)' : 'Pretas';
+  showToast('Nova guerra! Você joga com as ' + myColor);
+  enterGame();
+}
+
+async function handleNewGame() {
+  showLoading(true);
+  const data = await apiCall({ action: 'newGame', player: String(currentPlayer), mode: window.selectedGameMode || 'unlimited' });
   showLoading(false);
   if (data.error) { showToast('Erro ao criar partida', true); return; }
   gameState = data.state;
@@ -2257,19 +2389,50 @@ function enterGame() {
   // Initialize chess engine from current FEN
   chess = new ChessGame(gameState.fen);
 
+  // Adjust currentPlayer color based on who is starter (winner plays white)
+  // starter is stored in gameState or derived from last winner
+  if (gameState.starter) {
+    // If I am the starter, I play white (player 1 = white)
+    // If not, I play black (player 2 = black)  
+    // currentPlayer already set from selection, just update board orientation
+    window.myColor = (gameState.starter === String(currentPlayer)) ? 'w' : 'b';
+  } else {
+    window.myColor = currentPlayer === 1 ? 'w' : 'b';
+  }
+
   showScreen('screen-game');
   renderBoard();
   updateGameUI();
 
   // Start polling
   if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(pollGameState, 2000);
+  pollInterval = setInterval(pollGameState, 1000);
+
+  // Update timer - every second for blitz/classical, every 30s for others
+  if (window.timerInterval) clearInterval(window.timerInterval);
+  const mode = window.selectedGameMode || 'unlimited';
+  const timerFreq = (mode === 'blitz' || mode === 'classical') ? 1000 : 30000;
+  window.timerInterval = setInterval(updateTimerDisplay, timerFreq);
+  updateTimerDisplay();
 }
 
 async function pollGameState() {
   setSyncState('syncing');
   const data = await apiCall({ action: 'getState' });
   if (data.error) { setSyncState('error'); return; }
+
+  // Check if current player ran out of time
+  if (data.status === 'active' && data.lastMoveTime) {
+    const LIMIT_MS = getTimeLimitMs(data.gameMode || window.selectedGameMode || 'unlimited');
+    if (LIMIT_MS) {
+      const elapsed = Date.now() - new Date(data.lastMoveTime).getTime();
+      if (elapsed > LIMIT_MS) {
+        const loser = data.turn === 'w' ? '1' : '2';
+        await apiCall({ action: 'resign', player: loser });
+        showToast('⏰ Tempo esgotado. Derrota por abandono.');
+      }
+    }
+  }
 
   const prevTurn = gameState && gameState.turn;
   const prevLastMove = gameState && gameState.lastMove;
@@ -2297,7 +2460,8 @@ function renderBoard() {
   const board = document.getElementById('chess-board');
   board.innerHTML = '';
 
-  const flipped = currentPlayer === 2;
+  const myColor = window.myColor || (currentPlayer === 1 ? 'w' : 'b');
+  const flipped = myColor === 'b';
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
@@ -2341,7 +2505,7 @@ function handleCellClick(square) {
   if (gameState.status === 'ended') return;
 
   // Only allow if it's this player's turn
-  const myColor = currentPlayer === 1 ? 'w' : 'b';
+  const myColor = window.myColor || (currentPlayer === 1 ? 'w' : 'b');
   if (chess.turn !== myColor) {
     showToast('Não é sua vez');
     return;
@@ -2457,6 +2621,18 @@ async function executeMove(from, to, flag) {
   if (result.checkmate) {
     setTimeout(() => showGameOver(), 600);
   }
+
+  // Turbo polling after move: check every 500ms for 15s then back to 1s
+  turboPoll();
+}
+
+function turboPoll() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(pollGameState, 500);
+  setTimeout(function() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(pollGameState, 1000);
+  }, 15000);
 }
 
 function askPromotion() {
@@ -2502,7 +2678,8 @@ function updateGameUI(moveResult) {
 
   const p1 = gameState.p1name;
   const p2 = gameState.p2name;
-  const flipped = currentPlayer === 2;
+  const myColorUI = window.myColor || (currentPlayer === 1 ? 'w' : 'b');
+  const flipped = myColorUI === 'b';
 
   // Top player = opponent, bottom = me
   const topPlayer = flipped ? p1 : p2;
@@ -2516,10 +2693,18 @@ function updateGameUI(moveResult) {
   document.getElementById('p-bot-color').textContent = botColor;
 
   // Turn indicator
+  const turnPlayerName = gameState.turn === 'w' ? gameState.p1name : gameState.p2name;
+  // Show game mode in subtitle
+  const modeEl = document.getElementById('game-mode-label');
+  if (modeEl) {
+    const modeNames = {'blitz':'⚡ BLITZ','classical':'♟️ CLÁSSICO','7days':'📅 7 DIAS','unlimited':'∞ SEM LIMITE'};
+    const m = (gameState.gameMode || window.selectedGameMode || 'unlimited');
+    modeEl.textContent = modeNames[m] || '∞ SEM LIMITE';
+  }
   const isMyTurn = (gameState.turn === 'w' && currentPlayer === 1) || (gameState.turn === 'b' && currentPlayer === 2);
-  document.getElementById('turn-label').textContent = isMyTurn ? 'SUA VEZ' : 'RIVAL';
-  document.getElementById('p-bot-name').className = `player-name${isMyTurn ? ' active-player' : ''}`;
-  document.getElementById('p-top-name').className = `player-name${!isMyTurn ? ' active-player' : ''}`;
+  document.getElementById('turn-label').textContent = 'VEZ DE ' + turnPlayerName.toUpperCase();
+  document.getElementById('p-bot-name').className = 'player-name' + (isMyTurn ? ' active-player' : '');
+  document.getElementById('p-top-name').className = 'player-name' + (!isMyTurn ? ' active-player' : '');
 
   // Captured pieces
   const cap1 = gameState.capturedP1 || [];
@@ -2557,6 +2742,9 @@ function updateGameUI(moveResult) {
   } else {
     eventBar.textContent = 'A guerra começa. Sem piedade.';
   }
+
+  // Timer
+  updateTimerDisplay();
 
   // Move history
   const hist = gameState.moveHistory || [];
@@ -2604,7 +2792,7 @@ async function requestNewGame() {
   updateGameUI();
   // Restart polling
   if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(pollGameState, 2000);
+  pollInterval = setInterval(pollGameState, 1000);
   showToast(getRandomTaunt('newgame'));
 }
 
@@ -2667,6 +2855,49 @@ function loadSetupFromStorage() {
   }
 }
 
+async function resetHistory() {
+  var p1pass = document.getElementById('reset-p1pass').value.trim();
+  var p2pass = document.getElementById('reset-p2pass').value.trim();
+
+  var savedP1 = localStorage.getItem('grifo_pass_p1') || '';
+  var savedP2 = localStorage.getItem('grifo_pass_p2') || '';
+
+  // Both passwords required
+  if (!p1pass || !p2pass) {
+    showToast('Insira as senhas dos dois jogadores.', true);
+    return;
+  }
+
+  // Validate both
+  var p1ok = !savedP1 || (p1pass === savedP1);
+  var p2ok = !savedP2 || (p2pass === savedP2);
+
+  if (!p1ok || !p2ok) {
+    showToast('Senhas incorretas. Histórico mantido.', true);
+    document.getElementById('reset-p1pass').value = '';
+    document.getElementById('reset-p2pass').value = '';
+    return;
+  }
+
+  if (!confirm('ÚLTIMO AVISO: Isso apaga TODAS as vitórias e estatísticas para sempre. Confirmar?')) return;
+
+  showLoading(true);
+  const data = await apiCall({ action: 'resetHistory' });
+  showLoading(false);
+
+  if (data.error) {
+    showToast('Erro ao zerar: ' + data.error, true);
+    return;
+  }
+
+  gameState = data.state;
+  document.getElementById('reset-p1pass').value = '';
+  document.getElementById('reset-p2pass').value = '';
+  showToast('Histórico zerado. A rivalidade recomeça do zero.');
+  showScreen('screen-menu');
+  updateMenuUI();
+}
+
 async function saveSetup() {
   const p1ntfy = document.getElementById('cfg-p1ntfy').value.trim();
   const p2ntfy = document.getElementById('cfg-p2ntfy').value.trim();
@@ -2683,6 +2914,86 @@ async function saveSetup() {
 
   showToast('Configurações salvas. A guerra continua.');
   showScreen('screen-menu');
+}
+
+// ── TIMER ─────────────────────────────────────────────────────
+function getTimeLimitMs(mode) {
+  if (mode === 'blitz') return 5 * 60 * 1000;
+  if (mode === 'classical') return 30 * 60 * 1000;
+  if (mode === '7days') return 7 * 24 * 60 * 60 * 1000;
+  return null; // unlimited
+}
+
+function getTimeLeft(lastMoveTime) {
+  if (!lastMoveTime) return null;
+  const mode = (gameState && gameState.gameMode) || window.selectedGameMode || 'unlimited';
+  const LIMIT_MS = getTimeLimitMs(mode);
+  if (!LIMIT_MS) return null; // unlimited
+  const last = new Date(lastMoveTime).getTime();
+  const now = Date.now();
+  const elapsed = now - last;
+  const remaining = LIMIT_MS - elapsed;
+  if (remaining <= 0) return '⚠️ TEMPO ESGOTADO';
+  const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+  const secs = Math.floor((remaining % (60 * 1000)) / 1000);
+  if (days > 1) return days + 'd ' + hours + 'h restantes';
+  if (days === 1) return '1d ' + hours + 'h restantes';
+  if (hours > 0) return hours + 'h ' + mins + 'min restantes';
+  if (mins > 0) return mins + 'min ' + secs + 's restantes';
+  return secs + 's restantes';
+}
+
+function updateTimerDisplay() {
+  if (!gameState || gameState.status === 'ended') {
+    document.getElementById('timer-bar-wrap') && (document.getElementById('timer-bar-wrap').style.display = 'none');
+    return;
+  }
+
+  var mode = (gameState.gameMode || window.selectedGameMode || 'unlimited');
+  var LIMIT_MS = getTimeLimitMs(mode);
+
+  // Update small label in players bar
+  var el = document.getElementById('time-left');
+  if (el) {
+    var t = getTimeLeft(gameState.lastMoveTime);
+    if (t) {
+      el.textContent = t;
+      el.style.color = t.includes('⚠️') ? 'var(--red3)' : 'var(--gray)';
+    } else {
+      el.textContent = '';
+    }
+  }
+
+  // Update timer bar
+  var barWrap = document.getElementById('timer-bar-wrap');
+  var barFill = document.getElementById('timer-bar-fill');
+  var timerText = document.getElementById('timer-text');
+
+  if (!LIMIT_MS) {
+    if (barWrap) barWrap.style.display = 'none';
+    if (timerText) timerText.textContent = '';
+    return;
+  }
+
+  if (barWrap) barWrap.style.display = 'block';
+
+  var last = new Date(gameState.lastMoveTime || Date.now()).getTime();
+  var elapsed = Date.now() - last;
+  var remaining = LIMIT_MS - elapsed;
+  var pct = Math.max(0, Math.min(100, (remaining / LIMIT_MS) * 100));
+
+  if (barFill) {
+    barFill.style.width = pct + '%';
+    barFill.className = 'timer-bar-fill' + (pct < 25 ? ' warning' : '');
+  }
+
+  if (timerText) {
+    var t2 = getTimeLeft(gameState.lastMoveTime);
+    timerText.textContent = t2 || '';
+    timerText.className = 'timer-text' + (pct < 10 ? ' urgent' : pct < 25 ? ' warning' : '');
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
