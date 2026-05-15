@@ -879,26 +879,27 @@ async function loadInitialState() {
 
 function updateMenuUI() {
   if(!gameState)return;
-  document.getElementById('m-p1name').textContent=gameState.p1name||'P1';
-  document.getElementById('m-p2name').textContent=gameState.p2name||'P2';
-  document.getElementById('m-p1wins').textContent=gameState.p1wins||0;
-  document.getElementById('m-p2wins').textContent=gameState.p2wins||0;
+  document.getElementById('m-p1name').textContent='Alyson';
+  document.getElementById('m-p2name').textContent='Breno';
+  document.getElementById('m-p1wins').textContent=gameState.alysWins||0;
+  document.getElementById('m-p2wins').textContent=gameState.brenoWins||0;
   document.getElementById('m-total').textContent=gameState.totalGames||0;
   document.getElementById('m-draws').textContent=gameState.draws||0;
-  var s1=gameState.p1streak||0,s2=gameState.p2streak||0;
+  var sa=gameState.alysStreak||0,sb=gameState.brenoStreak||0;
   var streakEl=document.getElementById('m-streak');
-  if(s1>0)streakEl.textContent=s1+'× '+(gameState.p1name||'P1');
-  else if(s2>0)streakEl.textContent=s2+'× '+(gameState.p2name||'P2');
+  if(sa>0)streakEl.textContent=sa+'× Alyson';
+  else if(sb>0)streakEl.textContent=sb+'× Breno';
   else streakEl.textContent='—';
   var turnEl=document.getElementById('m-turn');
   var dotEl=document.getElementById('m-dot');
   if(gameState.status==='ended'){
-    var w=gameState.winner==='1'?gameState.p1name:gameState.p2name;
-    turnEl.textContent='Encerrada — '+w+' venceu';
+    var lastEvM=gameState.lastEvent||'';
+    var wm=lastEvM.replace('checkmate_','')||(gameState.whitePlayer||'Alyson');
+    turnEl.textContent='Encerrada — '+wm+' venceu';
     dotEl.className='status-dot ended';
   } else {
-    var tn=gameState.starterName||(gameState.turn==='w'?gameState.p1name:gameState.p2name);
-    turnEl.textContent='Vez de '+tn;
+    var tnm=gameState.currentTurnPlayer||(gameState.whitePlayer||'Alyson');
+    turnEl.textContent='Vez de '+tnm;
     dotEl.className='status-dot';
   }
 }
@@ -952,7 +953,7 @@ async function confirmNewGame(mode) {
   // Starter = winner of last game (by name), default = alyson
   var starter=gameState&&gameState.winnerName?gameState.winnerName:'alyson';
   showLoading(true);
-  var data=await apiCall({action:'newGame',player:currentPlayer,mode:mode,starter:starter});
+  var data=await apiCall({action:'newGame',mode:mode,playerName:currentPlayer});
   showLoading(false);
   if(data.error){showToast('Erro ao criar partida',true);return;}
   gameState=data.state;
@@ -969,10 +970,8 @@ async function requestNewGame() {
 function enterGame() {
   if(!gameState)return;
   chess=new ChessGame(gameState.fen);
-  // starter é o nome de quem joga com brancas
-  var starter=gameState.starter||'alyson';
-  myColor=(starter===currentPlayer)?'w':'b';
-  // myPlayerNum: quem tem brancas é "jogador 1" na lógica de turno
+  // Cor baseada no nome — whitePlayer é quem joga com brancas
+  myColor=(gameState.whitePlayer&&gameState.whitePlayer.toLowerCase()===currentPlayer.toLowerCase())?'w':'b';
   myPlayerNum=(myColor==='w')?1:2;
   showScreen('screen-game');
   renderBoard();
@@ -1111,7 +1110,7 @@ async function executeMove(from,to,flag) {
   flashBoard(result.checkmate?'red':result.check?'orange':null);
   var ev=result.checkmate?'checkmate':result.check?'check':result.captured?'capture':'move';
   setSyncState('syncing');
-  var data=await apiCall({action:'move',from:from,to:to,promotion:prom||'',player:String(myPlayerNum),san:result.san,fen:result.fen,captured:result.captured||'',check:result.check?'true':'false',checkmate:result.checkmate?'true':'false',event:ev,playerName:currentPlayer});
+  var data=await apiCall({action:'move',from:from,to:to,promotion:prom||'',playerName:currentPlayer,san:result.san,fen:result.fen,captured:result.captured||'',check:result.check?'true':'false',checkmate:result.checkmate?'true':'false',event:ev});
   setSyncState('ok');
   if(data.error){showToast('Erro ao sincronizar',true);chess.reset(gameState.fen);renderBoard();return;}
   gameState=data.state;
@@ -1145,42 +1144,45 @@ function askPromotion(){
 
 function updateGameUI(moveResult) {
   if(!gameState)return;
-  var p1n=gameState.p1name||'P1';
-  var p2n=gameState.p2name||'P2';
+  var whiteName=gameState.whitePlayer||'Alyson';
+  var blackName=gameState.blackPlayer||'Breno';
+  var turnPlayerName=gameState.currentTurnPlayer||whiteName;
 
-  // TURN — mostra o mesmo para os dois jogadores
+  // TURN — igual para os dois jogadores
   var turnEl=document.getElementById('g-turn-name');
   if(gameState.status==='ended'){
-    var w=gameState.winner==='1'?p1n:p2n;
-    turnEl.textContent=w.toUpperCase()+' VENCEU';
+    var lastEv=gameState.lastEvent||'';
+    var winnerN=lastEv.replace('checkmate_','');
+    if(!winnerN||winnerN.length<2)winnerN=whiteName;
+    turnEl.textContent=winnerN.toUpperCase()+' VENCEU';
     turnEl.className='turn-name';
   } else {
-    var turnName=(gameState.turn==='w'?p1n:p2n).toUpperCase();
-    turnEl.textContent='VEZ DE '+turnName;
+    turnEl.textContent='VEZ DE '+turnPlayerName.toUpperCase();
     turnEl.className='turn-name';
   }
 
-  // Players
-  document.getElementById('g-p1name').textContent=p1n;
-  document.getElementById('g-p2name').textContent=p2n;
-  document.getElementById('g-p1color').textContent='BRANCAS';
-  document.getElementById('g-p2color').textContent='PRETAS';
+  // Players — brancas à esquerda, pretas à direita
+  document.getElementById('g-p1name').textContent=whiteName;
+  document.getElementById('g-p2name').textContent=blackName;
+  document.getElementById('g-p1color').textContent='⬜ BRANCAS';
+  document.getElementById('g-p2color').textContent='⬛ PRETAS';
 
   // Captured
-  var cap1=gameState.capturedP1||[];
-  var cap2=gameState.capturedP2||[];
-  document.getElementById('g-p1cap').textContent=cap1.map(function(p){return PIECES[p]||PIECES[p.toUpperCase()]||p;}).join('');
-  document.getElementById('g-p2cap').textContent=cap2.map(function(p){return PIECES[p]||PIECES[p.toUpperCase()]||p;}).join('');
+  var capW=gameState.capturedWhite||[];
+  var capB=gameState.capturedBlack||[];
+  document.getElementById('g-p1cap').textContent=capW.map(function(p){return PIECES[p]||PIECES[p.toUpperCase()]||p;}).join('');
+  document.getElementById('g-p2cap').textContent=capB.map(function(p){return PIECES[p]||PIECES[p.toUpperCase()]||p;}).join('');
 
   // Event bar
   var eb=document.getElementById('event-bar');
   eb.className='event-bar';
   if(gameState.status==='ended'){
-    var w=gameState.winner==='1'?p1n:p2n;
-    var winnerN=gameState.winnerName||(gameState.winner==='1'?p1n:p2n);
-    var loserName=(winnerN===p1n)?p2n:p1n;
-    var loserKey=loserName.toLowerCase().includes('breno')?'breno':loserName.toLowerCase().includes('alyson')?'alyson':'other';
-    eb.textContent=w+' vence. '+getCheckmateMessage(loserKey);
+    var lastEv2=gameState.lastEvent||'';
+    var winnerName2=lastEv2.replace('checkmate_','');
+    if(!winnerName2||winnerName2.length<2)winnerName2=whiteName;
+    var loserName2=winnerName2.toLowerCase()===whiteName.toLowerCase()?blackName:whiteName;
+    var loserKey=loserName2.toLowerCase().includes('breno')?'breno':loserName2.toLowerCase().includes('alyson')?'alyson':'other';
+    eb.textContent=winnerName2+' vence. '+getCheckmateMessage(loserKey);
     eb.className='event-bar checkmate';
   } else if(moveResult){
     if(moveResult.checkmate){eb.textContent='Xeque-mate! '+moveResult.san;eb.className='event-bar checkmate';}
@@ -1206,7 +1208,6 @@ function updateGameUI(moveResult) {
     hl.appendChild(tag);
   });
   hl.scrollLeft=hl.scrollWidth;
-
   updateTimer();
 }
 
@@ -1215,8 +1216,12 @@ function showGameOver() {
   if(pollInterval)clearInterval(pollInterval);
   var p1n=gameState.p1name||'P1';
   var p2n=gameState.p2name||'P2';
-  var winner=gameState.winnerName||(gameState.winner==='1'?p1n:p2n);
-  var loser=(winner===p1n)?p2n:p1n;
+  var whiteName2=gameState.whitePlayer||'Brancas';
+  var blackName2=gameState.blackPlayer||'Pretas';
+  var lastEv3=gameState.lastEvent||'';
+  var winner=lastEv3.replace('checkmate_','')||whiteName2;
+  if(winner.length<2)winner=whiteName2;
+  var loser=winner.toLowerCase()===whiteName2.toLowerCase()?blackName2:whiteName2;
   var loserKey=loser.toLowerCase().includes('breno')?'breno':loser.toLowerCase().includes('alyson')?'alyson':'other';
   var isMe=(winner.toLowerCase()===currentPlayer.toLowerCase());
   document.getElementById('go-icon').textContent=isMe?'👑':'💀';
@@ -1233,7 +1238,7 @@ function resignConfirm(){if(confirm('Confirmar rendição? Isso conta como derro
 async function resignGame(){
   if(pollInterval)clearInterval(pollInterval);
   showLoading(true);
-  var data=await apiCall({action:'resign',player:String(myPlayerNum),playerName:currentPlayer});
+  var data=await apiCall({action:'resign',playerName:currentPlayer});
   showLoading(false);
   if(data.error){showToast('Erro',true);return;}
   gameState=data.state;
@@ -1260,8 +1265,8 @@ async function saveSetup(){
   if(p2ntfy)localStorage.setItem('grifo_p2ntfy',p2ntfy);
   if(p1pass)localStorage.setItem('grifo_pass_p1',p1pass);
   if(p2pass)localStorage.setItem('grifo_pass_p2',p2pass);
-  if(p1ntfy)await apiCall({action:'subscribe',player:'1',topic:p1ntfy});
-  if(p2ntfy)await apiCall({action:'subscribe',player:'2',topic:p2ntfy});
+  if(p1ntfy)await apiCall({action:'subscribe',playerName:'alyson',topic:p1ntfy});
+  if(p2ntfy)await apiCall({action:'subscribe',playerName:'breno',topic:p2ntfy});
   showToast('Configurações salvas.');
   showScreen('screen-menu');
 }
@@ -1290,19 +1295,19 @@ async function resetHistory(){
 async function updateStats(){
   var data=await apiCall({action:'getStats'});
   if(data.error)return;
-  document.getElementById('st-p1w').textContent=data.p1wins;
-  document.getElementById('st-p2w').textContent=data.p2wins;
-  document.getElementById('st-total').textContent=data.totalGames;
-  document.getElementById('st-draws').textContent=data.draws;
-  document.getElementById('st-p1lbl').textContent=(data.p1name||'P1')+' Vitórias';
-  document.getElementById('st-p2lbl').textContent=(data.p2name||'P2')+' Vitórias';
-  document.getElementById('dom-p1').textContent=data.p1name||'P1';
-  document.getElementById('dom-p2').textContent=data.p2name||'P2';
-  var tot=data.p1wins+data.p2wins;
-  document.getElementById('dom-fill').style.width=(tot>0?data.p1wins/tot*100:50)+'%';
-  var s1=data.p1streak,s2=data.p2streak;
-  if(s1>0){document.getElementById('st-streak').textContent=s1+'×';document.getElementById('st-streak-lbl').textContent=(data.p1name||'P1')+' em sequência';}
-  else if(s2>0){document.getElementById('st-streak').textContent=s2+'×';document.getElementById('st-streak-lbl').textContent=(data.p2name||'P2')+' em sequência';}
+  document.getElementById('st-p1w').textContent=data.alysWins||0;
+  document.getElementById('st-p2w').textContent=data.brenoWins||0;
+  document.getElementById('st-total').textContent=data.totalGames||0;
+  document.getElementById('st-draws').textContent=data.draws||0;
+  document.getElementById('st-p1lbl').textContent='Alyson — Vitórias';
+  document.getElementById('st-p2lbl').textContent='Breno — Vitórias';
+  document.getElementById('dom-p1').textContent='Alyson';
+  document.getElementById('dom-p2').textContent='Breno';
+  var tot=( data.alysWins||0)+(data.brenoWins||0);
+  document.getElementById('dom-fill').style.width=(tot>0?(data.alysWins||0)/tot*100:50)+'%';
+  var sa=data.alysStreak||0,sb=data.brenoStreak||0;
+  if(sa>0){document.getElementById('st-streak').textContent=sa+'×';document.getElementById('st-streak-lbl').textContent='Alyson em sequência';}
+  else if(sb>0){document.getElementById('st-streak').textContent=sb+'×';document.getElementById('st-streak-lbl').textContent='Breno em sequência';}
   else{document.getElementById('st-streak').textContent='—';document.getElementById('st-streak-lbl').textContent='Sem sequência ativa';}
 }
 
