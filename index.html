@@ -41,7 +41,7 @@
   --mono:     'Share Tech Mono', monospace;
   --serif:    'Cinzel', serif;
   --sans:     'Rajdhani', sans-serif;
-  --board-size: min(92vw, 500px);
+  --board-size: min(94vw, 480px);
   --cell-size: calc(var(--board-size) / 8);
 }
 
@@ -1403,6 +1403,23 @@ html, body {
       4. O tópico é o canal de notificações do celular
     </div>
 
+    <div class="field-group">
+      <div class="field-label">Sua Senha — Jogador 1 (Alyson)</div>
+      <input class="field-input" id="cfg-p1pass" type="password" placeholder="Defina sua senha secreta" maxlength="30">
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Sua Senha — Jogador 2 (Breno)</div>
+      <input class="field-input" id="cfg-p2pass" type="password" placeholder="Defina sua senha secreta" maxlength="30">
+    </div>
+
+    <div class="setup-ntfy-info" style="border-color:#8b1a1a; background:rgba(139,26,26,0.05);">
+      <strong style="color:#c0392b;">🔐 Sobre as senhas:</strong>
+      Cada jogador define e digita apenas a própria senha.<br>
+      As senhas ficam salvas só no seu celular.<br>
+      Deixe em branco para não usar senha.
+    </div>
+
     <div style="display:flex; gap:10px;">
       <button class="btn btn-primary" style="flex:1" onclick="saveSetup()">💾 SALVAR</button>
       <button class="btn btn-ghost" style="flex:1" onclick="showScreen('screen-menu')">← VOLTAR</button>
@@ -2155,10 +2172,20 @@ function closePlayerSelect() {
   pendingAction = null;
 }
 
-async function selectPlayer(player) {
+async async function selectPlayer(player) {
   currentPlayer = player;
   closePlayerSelect();
   loadSetupFromStorage();
+
+  // Password check
+  const savedPass = localStorage.getItem('grifo_pass_p' + player);
+  if (savedPass) {
+    const input = prompt('🔐 Senha do ' + (player === 1 ? (gameState?.p1name || 'Jogador 1') : (gameState?.p2name || 'Jogador 2')) + ':');
+    if (input !== savedPass) {
+      showToast('Senha incorreta. Acesso negado.', true);
+      return;
+    }
+  }
 
   if (pendingAction === 'newgame') {
     await handleNewGame();
@@ -2191,7 +2218,7 @@ function enterGame() {
 
   // Start polling
   if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(pollGameState, 3000);
+  pollInterval = setInterval(pollGameState, 2000);
 }
 
 async function pollGameState() {
@@ -2532,7 +2559,7 @@ async function requestNewGame() {
   updateGameUI();
   // Restart polling
   if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(pollGameState, 3000);
+  pollInterval = setInterval(pollGameState, 2000);
   showToast(getRandomTaunt('newgame'));
 }
 
@@ -2598,12 +2625,14 @@ function loadSetupFromStorage() {
 async function saveSetup() {
   const p1ntfy = document.getElementById('cfg-p1ntfy').value.trim();
   const p2ntfy = document.getElementById('cfg-p2ntfy').value.trim();
+  const p1pass = document.getElementById('cfg-p1pass').value.trim();
+  const p2pass = document.getElementById('cfg-p2pass').value.trim();
 
-  // Save ntfy topics locally (so each device knows its own)
   if (p1ntfy) localStorage.setItem('grifo_p1ntfy', p1ntfy);
   if (p2ntfy) localStorage.setItem('grifo_p2ntfy', p2ntfy);
+  if (p1pass) localStorage.setItem('grifo_pass_p1', p1pass);
+  if (p2pass) localStorage.setItem('grifo_pass_p2', p2pass);
 
-  // Save ntfy to server
   if (p1ntfy) await apiCall({ action: 'subscribe', player: '1', topic: p1ntfy });
   if (p2ntfy) await apiCall({ action: 'subscribe', player: '2', topic: p2ntfy });
 
@@ -2646,13 +2675,16 @@ function flashBoard(type) {
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Load setup values into inputs
   const p1ntfy = localStorage.getItem('grifo_p1ntfy') || '';
   const p2ntfy = localStorage.getItem('grifo_p2ntfy') || '';
   if (p1ntfy) document.getElementById('cfg-p1ntfy').value = p1ntfy;
   if (p2ntfy) document.getElementById('cfg-p2ntfy').value = p2ntfy;
 
-  // Run intro
+  // Set Alyson's default password if not set yet
+  if (!localStorage.getItem('grifo_pass_p1')) {
+    localStorage.setItem('grifo_pass_p1', 'vencedor');
+  }
+
   setTimeout(() => runIntro(), 300);
 });
 
