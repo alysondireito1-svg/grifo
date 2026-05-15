@@ -446,6 +446,20 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--blac
   </div>
 </div>
 
+<!-- IDENTIFICAÇÃO -->
+<div class="screen" id="screen-identify">
+  <div style="background:var(--dark);position:absolute;inset:0;"></div>
+  <div style="position:relative;width:100%;max-width:380px;padding:40px 24px;display:flex;flex-direction:column;gap:20px;align-items:center;">
+    <div style="font-family:var(--serif);font-size:clamp(40px,14vw,72px);font-weight:900;color:var(--gold);letter-spacing:0.15em;text-shadow:0 0 30px rgba(201,168,76,0.3);">G<span style="color:var(--red);font-size:0.5em;">.</span>R<span style="color:var(--red);font-size:0.5em;">.</span>I<span style="color:var(--red);font-size:0.5em;">.</span>F<span style="color:var(--red);font-size:0.5em;">.</span>O</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--gray);letter-spacing:0.4em;text-transform:uppercase;text-align:center;">Quem está acessando?</div>
+    <div style="font-family:var(--sans);font-size:12px;color:var(--gray);letter-spacing:0.1em;text-align:center;line-height:1.6;">Esta escolha fica salva neste celular.<br>Você não precisará escolher novamente.</div>
+    <div style="height:1px;width:100%;background:linear-gradient(90deg,transparent,var(--border2),transparent);"></div>
+    <button class="btn btn-primary" style="font-size:16px;padding:18px;" onclick="chooseIdentity('alyson')">⚔️ &nbsp; SOU ALYSON</button>
+    <button class="btn btn-secondary" style="font-size:16px;padding:18px;" onclick="chooseIdentity('breno')">⚔️ &nbsp; SOU BRENO</button>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--gray);letter-spacing:0.2em;text-align:center;margin-top:8px;">Esta informação fica apenas neste dispositivo</div>
+  </div>
+</div>
+
 <!-- GAME OVER -->
 <div class="gameover-overlay" id="gameover">
   <div class="gameover-card">
@@ -467,7 +481,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--blac
 
 var API = 'https://script.google.com/macros/s/AKfycbysf95itSBsSMmkq9mXc7EbyfPypQKIW1ZTaPv1tKD0A2JVdJ0U31EJzfdK4Dckjavg/exec';
 
-var currentPlayer = null;
+var currentPlayer = null; // 'alyson' or 'breno'
+var myPlayerNum = null;   // 1 or 2 based on who has white this game
 var gameState = null;
 var selectedCell = null;
 var legalMoves = [];
@@ -808,8 +823,26 @@ function runIntro() {
   setTimeout(function(){
     var el=document.getElementById('screen-intro');
     if(el){el.style.transition='opacity 0.8s';el.style.opacity='0';}
-    setTimeout(function(){showScreen('screen-menu');loadInitialState();},800);
+    setTimeout(function(){afterIntro();},800);
   },500+lines.length*800+2900);
+}
+
+function afterIntro() {
+  var identity = localStorage.getItem('grifo_identity');
+  if(!identity) {
+    showScreen('screen-identify');
+  } else {
+    currentPlayer = identity;
+    showScreen('screen-menu');
+    loadInitialState();
+  }
+}
+
+function chooseIdentity(who) {
+  localStorage.setItem('grifo_identity', who);
+  currentPlayer = who;
+  showScreen('screen-menu');
+  loadInitialState();
 }
 
 function spawnParticles() {
@@ -864,7 +897,7 @@ function updateMenuUI() {
     turnEl.textContent='Encerrada — '+w+' venceu';
     dotEl.className='status-dot ended';
   } else {
-    var tn=gameState.turn==='w'?gameState.p1name:gameState.p2name;
+    var tn=gameState.starterName||(gameState.turn==='w'?gameState.p1name:gameState.p2name);
     turnEl.textContent='Vez de '+tn;
     dotEl.className='status-dot';
   }
@@ -873,18 +906,17 @@ function updateMenuUI() {
 // ── MODAL ─────────────────────────────────────────────────────
 function openModal(action) {
   pendingAction=action;
-  var p1n=(gameState&&gameState.p1name)||'Jogador 1';
-  var p2n=(gameState&&gameState.p2name)||'Jogador 2';
-  document.getElementById('ms-btn1').textContent='⬜ '+p1n+' — Brancas';
-  document.getElementById('ms-btn2').textContent='⬛ '+p2n+' — Pretas';
-  document.getElementById('ms-player-btns').style.display='flex';
-  document.getElementById('ms-mode-btns').style.display='none';
+  // Identity already known — skip player selection
   if(action==='newgame'){
+    // Show mode selection directly
+    document.getElementById('ms-player-btns').style.display='none';
+    document.getElementById('ms-mode-btns').style.display='flex';
     document.getElementById('ms-title').textContent='Nova Partida';
-    document.getElementById('ms-desc').textContent='Quem está iniciando a nova guerra?';
+    document.getElementById('ms-desc').textContent='Escolha o modo desta guerra';
   } else {
-    document.getElementById('ms-title').textContent='Quem é você?';
-    document.getElementById('ms-desc').textContent='Escolha seu lado na guerra';
+    // Just enter game directly
+    enterGame();
+    return;
   }
   document.getElementById('modal-select').classList.add('active');
 }
@@ -917,14 +949,13 @@ function selectPlayer(player) {
 async function confirmNewGame(mode) {
   closeModal();
   window.selectedMode=mode;
-  var starter='1';
-  if(gameState&&gameState.winner)starter=gameState.winner;
+  // Starter = winner of last game (by name), default = alyson
+  var starter=gameState&&gameState.winnerName?gameState.winnerName:'alyson';
   showLoading(true);
-  var data=await apiCall({action:'newGame',player:String(currentPlayer),mode:mode,starter:starter});
+  var data=await apiCall({action:'newGame',player:currentPlayer,mode:mode,starter:starter});
   showLoading(false);
   if(data.error){showToast('Erro ao criar partida',true);return;}
   gameState=data.state;
-  var myC=starter===String(currentPlayer)?'Brancas (joga primeiro)':'Pretas';
   showToast(getTaunt('newgame'));
   enterGame();
 }
@@ -938,8 +969,11 @@ async function requestNewGame() {
 function enterGame() {
   if(!gameState)return;
   chess=new ChessGame(gameState.fen);
-  var starter=gameState.starter||'1';
-  myColor=starter===String(currentPlayer)?'w':'b';
+  // starter é o nome de quem joga com brancas
+  var starter=gameState.starter||'alyson';
+  myColor=(starter===currentPlayer)?'w':'b';
+  // myPlayerNum: quem tem brancas é "jogador 1" na lógica de turno
+  myPlayerNum=(myColor==='w')?1:2;
   showScreen('screen-game');
   renderBoard();
   updateGameUI();
@@ -1030,9 +1064,7 @@ function renderBoard() {
 function handleClick(sq) {
   if(!chess||!currentPlayer||!gameState)return;
   if(gameState.status==='ended')return;
-  var expectedTurn=gameState.turn==='w'?1:2;
   if(chess.turn!==myColor){showToast('Aguarde sua vez');return;}
-  if(currentPlayer!==expectedTurn){showToast('Não é sua vez');return;}
   if(selectedCell){
     var mv=null;
     for(var i=0;i<legalMoves.length;i++){
@@ -1079,7 +1111,7 @@ async function executeMove(from,to,flag) {
   flashBoard(result.checkmate?'red':result.check?'orange':null);
   var ev=result.checkmate?'checkmate':result.check?'check':result.captured?'capture':'move';
   setSyncState('syncing');
-  var data=await apiCall({action:'move',from:from,to:to,promotion:prom||'',player:String(currentPlayer),san:result.san,fen:result.fen,captured:result.captured||'',check:result.check?'true':'false',checkmate:result.checkmate?'true':'false',event:ev});
+  var data=await apiCall({action:'move',from:from,to:to,promotion:prom||'',player:String(myPlayerNum),san:result.san,fen:result.fen,captured:result.captured||'',check:result.check?'true':'false',checkmate:result.checkmate?'true':'false',event:ev,playerName:currentPlayer});
   setSyncState('ok');
   if(data.error){showToast('Erro ao sincronizar',true);chess.reset(gameState.fen);renderBoard();return;}
   gameState=data.state;
@@ -1145,7 +1177,8 @@ function updateGameUI(moveResult) {
   eb.className='event-bar';
   if(gameState.status==='ended'){
     var w=gameState.winner==='1'?p1n:p2n;
-    var loserName=gameState.winner==='1'?p2n:p1n;
+    var winnerN=gameState.winnerName||(gameState.winner==='1'?p1n:p2n);
+    var loserName=(winnerN===p1n)?p2n:p1n;
     var loserKey=loserName.toLowerCase().includes('breno')?'breno':loserName.toLowerCase().includes('alyson')?'alyson':'other';
     eb.textContent=w+' vence. '+getCheckmateMessage(loserKey);
     eb.className='event-bar checkmate';
@@ -1182,10 +1215,10 @@ function showGameOver() {
   if(pollInterval)clearInterval(pollInterval);
   var p1n=gameState.p1name||'P1';
   var p2n=gameState.p2name||'P2';
-  var winner=gameState.winner==='1'?p1n:p2n;
-  var loser=gameState.winner==='1'?p2n:p1n;
+  var winner=gameState.winnerName||(gameState.winner==='1'?p1n:p2n);
+  var loser=(winner===p1n)?p2n:p1n;
   var loserKey=loser.toLowerCase().includes('breno')?'breno':loser.toLowerCase().includes('alyson')?'alyson':'other';
-  var isMe=gameState.winner===String(currentPlayer);
+  var isMe=(winner.toLowerCase()===currentPlayer.toLowerCase());
   document.getElementById('go-icon').textContent=isMe?'👑':'💀';
   document.getElementById('go-title').textContent=isMe?'VITÓRIA':'DERROTA';
   document.getElementById('go-winner').textContent=winner+' derrotou '+loser;
@@ -1200,7 +1233,7 @@ function resignConfirm(){if(confirm('Confirmar rendição? Isso conta como derro
 async function resignGame(){
   if(pollInterval)clearInterval(pollInterval);
   showLoading(true);
-  var data=await apiCall({action:'resign',player:String(currentPlayer)});
+  var data=await apiCall({action:'resign',player:String(myPlayerNum),playerName:currentPlayer});
   showLoading(false);
   if(data.error){showToast('Erro',true);return;}
   gameState=data.state;
@@ -1300,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('intro-skip').addEventListener('click', function() {
     var el=document.getElementById('screen-intro');
     if(el){el.style.transition='opacity 0.4s';el.style.opacity='0';}
-    setTimeout(function(){showScreen('screen-menu');loadInitialState();},400);
+    setTimeout(function(){afterIntro();},400);
   });
 
   setTimeout(runIntro, 300);
