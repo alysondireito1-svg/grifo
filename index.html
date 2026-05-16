@@ -499,7 +499,7 @@ var currentScreen = 'intro';
 // ─── STATE ──────────────────────────────────────────
 var state = {
   fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-  turn: 'w', status: 'waiting',
+  turn: 'w', status: 'active',
   whitePlayer: 'Alyson', blackPlayer: 'Breno',
   lastMove: '', lastMoveTime: 0,
   alysWins: 0, brenoWins: 0, draws: 0, totalGames: 0,
@@ -1002,11 +1002,18 @@ function applyState(res) {
   if (currentScreen === 'game') {
     updateGameUI();
     // Jogada do adversário?
-    if (state.lastMovedBy && state.lastMovedBy !== LOCAL_PLAYER && state.fen !== lastRenderedFen) {
+    var isOpponentMove = state.lastMovedBy && state.lastMovedBy !== LOCAL_PLAYER && state.fen !== lastRenderedFen;
+    if (isOpponentMove) {
       flashBoard();
       if (navigator.vibrate) navigator.vibrate([60, 20, 60]);
+      // Limpa seleção ao receber jogada do oponente
+      selectedSq = null;
+      legalMoves = [];
     }
-    renderBoard();
+    // Só rerenderiza o tabuleiro se FEN mudou (oponente jogou) ou não há seleção ativa
+    if (state.fen !== lastRenderedFen || !selectedSq) {
+      renderBoard();
+    }
     lastRenderedFen = state.fen;
     // Xeque-mate remoto
     if (state.checkmate && !document.getElementById('overlay-result').classList.contains('open')) {
@@ -1118,8 +1125,13 @@ function resetAll() {
 
 // ─── GAME SCREEN UI ──────────────────────────────────
 function enterArena() {
+  // Garante que sem backend o jogo funcione normalmente
+  if (!LOCAL_PLAYER) LOCAL_PLAYER = 'Alyson';
+  if (state.status !== 'active') state.status = 'active';
   showScreen('game');
   flipped = (LOCAL_PLAYER === state.blackPlayer);
+  selectedSq = null;
+  legalMoves = [];
   renderBoard();
   updateGameUI();
   startPoll();
@@ -1208,18 +1220,23 @@ function formatTime(s) {
 }
 
 // ─── BOARD RENDER ────────────────────────────────────
+// bd e fenParts são mantidos como globals para evitar closure stale
+var currentBd = [];
+var currentFenParts = [];
+
 function renderBoard() {
-  var bd = fenToBoard(state.fen);
-  var fenParts = state.fen.split(' ');
+  currentBd = fenToBoard(state.fen);
+  currentFenParts = state.fen.split(' ');
   var container = document.getElementById('board');
   container.innerHTML = '';
 
-  // Coordenadas
-  var files = flipped ? ['h','g','f','e','d','c','b','a'] : ['a','b','c','d','e','f','g','h'];
-  var ranks = flipped ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
-
-  var lastFrom = state.lastMove ? state.lastMove.substring(0, 2) : '';
-  var lastTo   = state.lastMove ? state.lastMove.substring(2, 4) : '';
+  // Converte lastMove (formato "e2e4") em par de sqNames
+  var lastFrom = '';
+  var lastTo   = '';
+  if (state.lastMove && state.lastMove.length >= 4) {
+    lastFrom = state.lastMove.substring(0, 2); // ex: "e2"
+    lastTo   = state.lastMove.substring(2, 4); // ex: "e4"
+  }
 
   for (var row = 0; row < 8; row++) {
     for (var col = 0; col < 8; col++) {
@@ -1228,12 +1245,13 @@ function renderBoard() {
       var sq = document.createElement('div');
       var isLight = (r + c) % 2 === 0;
       sq.className = 'sq ' + (isLight ? 'light' : 'dark');
+      // Guarda índices reais (não flipped) no dataset
       sq.dataset.r = r;
       sq.dataset.c = c;
 
-      var fileChar = String.fromCharCode(97 + c);
-      var rankChar = (8 - r).toString();
-      var sqName = fileChar + rankChar;
+      var fileChar = String.fromCharCode(97 + c); // 'a'..'h'
+      var rankChar = (8 - r).toString();           // '1'..'8'
+      var sqName   = fileChar + rankChar;
 
       // Último movimento
       if (sqName === lastFrom || sqName === lastTo) sq.classList.add('highlight');
@@ -1241,87 +1259,113 @@ function renderBoard() {
       // Selecionado
       if (selectedSq && selectedSq[0] === r && selectedSq[1] === c) sq.classList.add('selected');
 
-      // Xeque do rei
+      // Xeque — pisca rei
       if (state.check) {
-        var p = bd[r][c];
+        var sqPiece = currentBd[r][c];
         var isWhiteTurn = state.turn === 'w';
-        if ((isWhiteTurn && p === 'K') || (!isWhiteTurn && p === 'k')) sq.classList.add('check-flash');
+        if ((isWhiteTurn && sqPiece === 'K') || (!isWhiteTurn && sqPiece === 'k')) {
+          sq.classList.add('check-flash');
+        }
       }
 
-      // Movimentos legais
+      // Movimentos legais do selecionado
       var isLegal = false;
-      for (var i = 0; i < legalMoves.length; i++) {
-        if (legalMoves[i][0] === r && legalMoves[i][1] === c) { isLegal = true; break; }
+      for (var li = 0; li < legalMoves.length; li++) {
+        if (legalMoves[li][0] === r && legalMoves[li][1] === c) { isLegal = true; break; }
       }
       if (isLegal) {
         var indicator = document.createElement('div');
-        if (bd[r][c]) indicator.className = 'legal-cap';
-        else indicator.className = 'legal-dot';
+        indicator.className = currentBd[r][c] ? 'legal-cap' : 'legal-dot';
         sq.appendChild(indicator);
       }
 
       // Peça
-      var piece = bd[r][c];
+      var piece = currentBd[r][c];
       if (piece) {
         var span = document.createElement('span');
         span.className = 'piece';
         span.textContent = PIECES[piece] || piece;
-        if (piece === piece.toUpperCase()) span.style.filter = 'drop-shadow(0 0 3px rgba(255,255,255,0.5))';
-        else span.style.filter = 'drop-shadow(0 0 3px rgba(0,0,0,0.9))';
+        span.style.filter = (piece === piece.toUpperCase())
+          ? 'drop-shadow(0 1px 3px rgba(255,255,255,0.6))'
+          : 'drop-shadow(0 1px 3px rgba(0,0,0,0.95))';
         sq.appendChild(span);
       }
 
-      sq.addEventListener('click', function(e) {
-        var rr = parseInt(this.dataset.r);
-        var cc = parseInt(this.dataset.c);
-        onSquareClick(rr, cc, bd, fenParts);
-      });
+      // Listener usa dataset — sem closure stale
+      sq.addEventListener('click', handleSquareClick);
       container.appendChild(sq);
     }
   }
 }
 
-function onSquareClick(r, c, bd, fenParts) {
-  if (state.status !== 'active') return;
-  // Verifica se é a vez do jogador local
-  var localIsWhite = (LOCAL_PLAYER === state.whitePlayer);
-  var myTurn = (state.turn === 'w') === localIsWhite;
-  var myPieceColor = localIsWhite;
+// Handler separado: lê bd/fenParts das globals currentBd/currentFenParts
+function handleSquareClick(e) {
+  var r = parseInt(this.dataset.r);
+  var c = parseInt(this.dataset.c);
+  onSquareClick(r, c);
+}
 
-  if (selectedSq) {
-    // Verificar se clicou numa casa legal
-    var isLegal = false;
-    for (var i = 0; i < legalMoves.length; i++) {
-      if (legalMoves[i][0] === r && legalMoves[i][1] === c) { isLegal = true; break; }
-    }
-    if (isLegal) {
-      executeMove(selectedSq[0], selectedSq[1], r, c, bd, fenParts);
-      selectedSq = null; legalMoves = [];
-      return;
-    }
-    // Outro clique — deselecionar ou selecionar nova peça
-    selectedSq = null; legalMoves = [];
+function onSquareClick(r, c) {
+  // Determina cor local e vez
+  var localIsWhite = (LOCAL_PLAYER === state.whitePlayer);
+  var isWhiteTurn = state.turn === 'w';
+  var myTurn = isWhiteTurn === localIsWhite;
+
+  // Sem backend configurado: permite mover a cor da vez livremente (modo teste)
+  if (!BACKEND_URL) {
+    localIsWhite = isWhiteTurn; // sempre pode mover a cor atual
+    myTurn = true;
   }
 
-  if (!myTurn) return; // Não é a vez do jogador local
-  var p = bd[r][c];
+  if (selectedSq) {
+    // Verifica se destino é legal
+    var isLegal = false;
+    for (var li = 0; li < legalMoves.length; li++) {
+      if (legalMoves[li][0] === r && legalMoves[li][1] === c) { isLegal = true; break; }
+    }
+    if (isLegal) {
+      executeMove(selectedSq[0], selectedSq[1], r, c);
+      selectedSq = null;
+      legalMoves = [];
+      return;
+    }
+    // Clique fora — deseleciona
+    selectedSq = null;
+    legalMoves = [];
+    // Se clicou numa peça da cor da vez, seleciona ela
+    var p2 = currentBd[r][c];
+    if (p2 && (p2 === p2.toUpperCase()) === localIsWhite && myTurn) {
+      selectedSq = [r, c];
+      legalMoves = legalMovesFor(currentBd, r, c, currentFenParts);
+    }
+    renderBoard();
+    return;
+  }
+
+  // Nada selecionado: tenta selecionar
+  if (!myTurn) return;
+  var p = currentBd[r][c];
   if (!p) return;
   var pIsWhite = (p === p.toUpperCase());
-  if (pIsWhite !== myPieceColor) return;
+  if (pIsWhite !== localIsWhite) return;
 
   selectedSq = [r, c];
-  legalMoves = legalMovesFor(bd, r, c, fenParts);
+  legalMoves = legalMovesFor(currentBd, r, c, currentFenParts);
   renderBoard();
 }
 
-function executeMove(fromR, fromC, toR, toC, bd, fenParts) {
+function executeMove(fromR, fromC, toR, toC) {
+  var bd = currentBd;
+  var fenParts = currentFenParts;
   var piece = bd[fromR][fromC];
   var captured = bd[toR][toC];
   var isCapture = !!captured;
 
   var newBd = applyMove(bd, fromR, fromC, toR, toC);
   var localIsWhite = (LOCAL_PLAYER === state.whitePlayer);
-  var newTurn = localIsWhite ? 'b' : 'w';
+  // Sem backend: alterna a vez normalmente
+  var isWhiteTurn = state.turn === 'w';
+  var newTurn = isWhiteTurn ? 'b' : 'w';
 
   // SAN básico
   var files = 'abcdefgh';
@@ -1339,8 +1383,8 @@ function executeMove(fromR, fromC, toR, toC, bd, fenParts) {
     san += files[toC] + (8 - toR);
   }
 
-  // Verificar xeque/mate no novo tabuleiro
-  var opIsWhite = !localIsWhite;
+  // Verificar xeque/mate no novo tabuleiro (oponente é quem vai jogar depois)
+  var opIsWhite = !isWhiteTurn; // quem acaba de mover era isWhiteTurn, oponente é o contrário
   var check = isInCheck(newBd, opIsWhite);
   var checkmate = check && isCheckmate(newBd, opIsWhite);
   if (checkmate) san += '#';
@@ -1388,18 +1432,21 @@ function executeMove(fromR, fromC, toR, toC, bd, fenParts) {
   }
 
   // Aplicar localmente primeiro
+  var FILES = 'abcdefgh';
   state.fen = newFen;
   state.turn = newTurn;
   state.check = check;
   state.checkmate = checkmate;
   state.capturedWhite = capW;
   state.capturedBlack = capB;
-  state.lastMove = files[fromC] + (8-fromR) + files[toC] + (8-toR);
+  // formato correto: "e2e4" (file+rank de e para t)
+  state.lastMove = FILES[fromC] + (8 - fromR) + FILES[toC] + (8 - toR);
   state.lastMoveSan = san;
   state.lastMovedBy = LOCAL_PLAYER;
   state.whiteTime = wt;
   state.blackTime = bt;
   state.lastTimestamp = Date.now();
+  lastRenderedFen = newFen;
   renderBoard();
   updateGameUI();
 
