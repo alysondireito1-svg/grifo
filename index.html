@@ -151,7 +151,9 @@ input{font-family:'Share Tech Mono',monospace;background:var(--bg3);border:1px s
 @keyframes checkFlash{from{background:rgba(192,57,43,0.5)}to{background:rgba(192,57,43,0.15)}}
 .sq .legal-dot{position:absolute;width:28%;height:28%;border-radius:50%;background:rgba(201,168,76,0.55);pointer-events:none;z-index:2}
 .sq .legal-cap{position:absolute;inset:0;border:2px solid var(--gold);pointer-events:none;z-index:2;opacity:0.7}
-.sq .piece{font-size:calc(var(--sq)*0.72);line-height:1;z-index:3;pointer-events:none;transition:transform 0.15s;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8))}
+.sq .piece{font-size:calc(var(--sq)*0.72);line-height:1;z-index:3;pointer-events:none !important;transition:transform 0.15s;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.8))}
+.sq .legal-dot{pointer-events:none !important}
+.sq .legal-cap{pointer-events:none !important}
 /* Notation sidebar — scrollable */
 #notation-box{width:100%;padding:4px 14px;flex-shrink:0;max-height:60px;overflow-y:auto;border-top:1px solid rgba(201,168,76,0.08)}
 #notation-inner{font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:var(--text-dim);line-height:1.6;letter-spacing:0.05em}
@@ -1291,18 +1293,25 @@ function renderBoard() {
         sq.appendChild(span);
       }
 
-      // Listener usa dataset — sem closure stale
-      sq.addEventListener('click', handleSquareClick);
+      // SEM addEventListener individual — delegação no container (ver abaixo)
       container.appendChild(sq);
     }
   }
-}
 
-// Handler separado: lê bd/fenParts das globals currentBd/currentFenParts
-function handleSquareClick(e) {
-  var r = parseInt(this.dataset.r);
-  var c = parseInt(this.dataset.c);
-  onSquareClick(r, c);
+  // Delegação: um único listener no container, sempre captura o sq correto
+  container.addEventListener('click', function boardClickDelegate(e) {
+    // Sobe na árvore até achar um elemento com dataset.r definido
+    var target = e.target;
+    while (target && target !== container) {
+      if (target.dataset && target.dataset.r !== undefined) {
+        var r = parseInt(target.dataset.r);
+        var c = parseInt(target.dataset.c);
+        onSquareClick(r, c);
+        return;
+      }
+      target = target.parentElement;
+    }
+  });
 }
 
 function onSquareClick(r, c) {
@@ -1531,14 +1540,58 @@ function selectMode(el, mode) {
   el.classList.add('selected');
 }
 
+function applyNewGameLocally(mode) {
+  var modeTimes = { blitz: 300, classic: 1800, correspondence: 604800, unlimited: 0 };
+  var timeLimit = modeTimes[mode] || 0;
+  // Quem ganhou a última começa com brancas
+  var white = state.whitePlayer || 'Alyson';
+  var black = state.blackPlayer || 'Breno';
+  if (state.lastEvent && state.lastEvent.indexOf('checkmate_') === 0) {
+    white = state.lastEvent.replace('checkmate_', '');
+    black = (white === 'Alyson') ? 'Breno' : 'Alyson';
+  }
+  state.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  state.turn = 'w';
+  state.status = 'active';
+  state.whitePlayer = white;
+  state.blackPlayer = black;
+  state.lastMove = '';
+  state.moveHistory = [];
+  state.capturedWhite = [];
+  state.capturedBlack = [];
+  state.check = false;
+  state.checkmate = false;
+  state.lastEvent = 'newGame';
+  state.lastMoveSan = '';
+  state.gameMode = mode;
+  state.gameId = 'L' + Date.now();
+  state.lastMovedBy = '';
+  state.whiteTime = timeLimit;
+  state.blackTime = timeLimit;
+  state.lastTimestamp = Date.now();
+  lastRenderedFen = '';
+  selectedSq = null;
+  legalMoves = [];
+}
+
 function startNewGame() {
   closeNewGameModal();
+  if (!BACKEND_URL) {
+    // Modo offline: inicia localmente sem backend
+    applyNewGameLocally(selectedMode);
+    enterArena();
+    showPhrase('newGame', null);
+    return;
+  }
   apiCall('newGame', { mode: selectedMode }, function(res) {
     if (res && res.ok) {
       loadState();
       setTimeout(function() { enterArena(); }, 400);
     } else {
-      alert('Erro ao criar partida. Configure a URL do backend nas configurações.');
+      // Fallback offline mesmo com URL configurada mas com erro
+      applyNewGameLocally(selectedMode);
+      enterArena();
+      showPhrase('newGame', null);
     }
   });
 }
@@ -1546,11 +1599,17 @@ function startNewGame() {
 // ─── RESIGN ───────────────────────────────────────────
 function resignGame() {
   if (!confirm('Render a partida?')) return;
+  var winner = (LOCAL_PLAYER === state.whitePlayer) ? state.blackPlayer : state.whitePlayer;
+  if (!BACKEND_URL) {
+    state.status = 'finished';
+    state.lastEvent = 'resign';
+    showResultDirect(winner + ' venceu!', LOCAL_PLAYER + ' se rendeu', LOCAL_PLAYER);
+    return;
+  }
   apiCall('resign', { player: LOCAL_PLAYER }, function(res) {
-    if (res && res.ok) {
-      state.status = 'finished';
-      showResultDirect(res.winner + ' venceu!', LOCAL_PLAYER + ' se rendeu', LOCAL_PLAYER);
-    }
+    state.status = 'finished';
+    var w = (res && res.winner) ? res.winner : winner;
+    showResultDirect(w + ' venceu!', LOCAL_PLAYER + ' se rendeu', LOCAL_PLAYER);
   });
 }
 
